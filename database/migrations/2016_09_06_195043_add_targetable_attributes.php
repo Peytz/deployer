@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
 use REBELinBLUE\Deployer\Group;
 use REBELinBLUE\Deployer\Project;
 use REBELinBLUE\Deployer\Template;
@@ -29,8 +30,8 @@ class AddTargetableAttributes extends Migration
                 $table->string('target_type')->nullable();
             });
 
-            if (isset($_ENV['DB_TYPE']) && $_ENV['DB_TYPE'] !== 'sqlite') {
-                $drop = $_ENV['DB_TYPE'] === 'mysql' ? 'FOREIGN KEY' : 'CONSTRAINT';
+            if (config('database.default') !== 'sqlite') {
+                $drop = config('database.default') === 'mysql' ? 'FOREIGN KEY' : 'CONSTRAINT';
 
                 DB::statement("ALTER TABLE {$table} DROP {$drop} {$table}_project_id_foreign");
             }
@@ -71,8 +72,15 @@ class AddTargetableAttributes extends Migration
                 ->update(['group_id' => 2]);
 
         // Remove the left over fake templates and the containing group
-        Project::where('is_template', true)->forceDelete();
-        Group::find(1)->forceDelete();
+        foreach (Project::where('is_template', true)->withTrashed() as $template) {
+            $template->forceDelete();
+        }
+
+        $group = new Group;
+        $group->where('id', 1)
+              ->withTrashed();
+
+        $group->forceDelete();
 
         // Remove the unneeded project ID column
         foreach ($this->relations as $relation) {
@@ -82,14 +90,14 @@ class AddTargetableAttributes extends Migration
             $table = $instance->getTable();
 
             // You can't drop a column in SQLite
-            if ($_ENV['DB_TYPE'] !== 'sqlite') {
+            if (config('database.default') !== 'sqlite') {
                 DB::statement("ALTER TABLE {$table} DROP COLUMN project_id");
             }
 
-            if ($_ENV['DB_TYPE'] === 'mysql') {
+            if (config('database.default') === 'mysql') {
                 DB::statement("ALTER TABLE {$table} MODIFY target_id INT(11) NOT NULL");
                 DB::statement("ALTER TABLE {$table} MODIFY target_type VARCHAR(255) NOT NULL");
-            } elseif ($_ENV['DB_TYPE'] === 'pgsql') {
+            } elseif (config('database.default') === 'pgsql') {
                 DB::statement("ALTER TABLE {$table} ALTER COLUMN target_id SET NOT NULL");
                 DB::statement("ALTER TABLE {$table} ALTER COLUMN target_type SET NOT NULL");
             }

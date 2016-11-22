@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
 use REBELinBLUE\Deployer\Deployment;
 
 class AddCancelledDeploymentStatus extends Migration
@@ -10,7 +11,7 @@ class AddCancelledDeploymentStatus extends Migration
      */
     public function up()
     {
-        if (isset($_ENV['DB_TYPE']) && $_ENV['DB_TYPE'] === 'mysql') {
+        if (config('database.default') === 'mysql') {
             DB::statement("ALTER TABLE deployments CHANGE status status ENUM('"
                 . Deployment::PENDING . "', '"
                 . Deployment::DEPLOYING . "', '"
@@ -27,7 +28,7 @@ class AddCancelledDeploymentStatus extends Migration
      */
     public function down()
     {
-        if (isset($_ENV['DB_TYPE']) && $_ENV['DB_TYPE'] === 'mysql') {
+        if (config('database.default') === 'mysql') {
             DB::statement("ALTER TABLE deployments CHANGE status status ENUM('"
                 . Deployment::PENDING . "', '"
                 . Deployment::DEPLOYING . "', '"
